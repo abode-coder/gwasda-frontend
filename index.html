@@ -379,6 +379,136 @@
     #auth-section, #app-section { display: none; }
     #auth-section.show, #app-section.show { display: block; }
 
+    /* PLUGIN MODAL */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(6px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+      text-align: center;
+      animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* corner accents on modal */
+    .modal::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 40px; height: 2px;
+      background: var(--green);
+    }
+
+    .modal::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 2px; height: 40px;
+      background: var(--green);
+    }
+
+    .modal-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .modal-icon svg {
+      width: 28px;
+      height: 28px;
+      stroke: var(--muted);
+    }
+
+    .modal-icon.connected {
+      border-color: var(--green);
+      box-shadow: 0 0 20px rgba(0,255,136,0.3);
+    }
+
+    .modal-icon.connected svg {
+      stroke: var(--green);
+    }
+
+    .modal-ring {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 1px solid rgba(0,255,136,0.2);
+      animation: ring-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes ring-pulse {
+      0%, 100% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+
+    .modal-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 2px;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .modal-desc {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      line-height: 1.8;
+      margin-bottom: 24px;
+    }
+
+    .modal-desc strong {
+      color: var(--green);
+      font-weight: 400;
+    }
+
+    .modal-status {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    .modal-status.connected-status { color: var(--green); }
+
     /* Plugin status pill */
     .plugin-pill {
       display: inline-flex;
@@ -399,6 +529,29 @@
 <body>
   <div class="vignette"></div>
   <div class="glow-blob"></div>
+
+  <!-- PLUGIN MODAL -->
+  <div class="modal-overlay hidden" id="plugin-modal">
+    <div class="modal">
+      <div class="modal-icon" id="modal-icon">
+        <div class="modal-ring"></div>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 9h6M9 12h6M9 15h4"/>
+        </svg>
+      </div>
+      <div class="modal-title">Connect Plugin</div>
+      <div class="modal-desc">
+        Open <strong>Roblox Studio</strong> and make sure the<br/>
+        <strong>gwasda.gg plugin</strong> is installed and running.<br/>
+        This screen will close automatically.
+      </div>
+      <div class="modal-status" id="modal-status">
+        <div class="dot pulse"></div>
+        <span id="modal-status-text">Waiting for plugin...</span>
+      </div>
+    </div>
+  </div>
 
   <div class="container">
     <div class="header">
@@ -436,9 +589,9 @@
           <button class="logout-btn" onclick="logout()">logout</button>
         </div>
 
-        <div class="plugin-pill">
-          <div class="dot"></div>
-          plugin: waiting for studio
+        <div class="plugin-pill" id="plugin-pill">
+          <div class="dot" id="pill-dot"></div>
+          <span>plugin: waiting for studio</span>
         </div>
 
         <div class="card-label">What should I build?</div>
@@ -461,6 +614,58 @@
   const SUPABASE_URL = "https://bquoisyepbietonulgtk.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxdW9pc3llcGJpZXRvbnVsZ3RrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzk0MjYsImV4cCI6MjA5MzkxNTQyNn0.K4ygrfNtEOZzQa9JAtRRxFu_JX-vi1r1_4lUKdrPo1I";
   const BACKEND_URL = "https://gwasda-backend-production.up.railway.app";
+
+  let pluginConnected = false;
+  let pluginPollInterval = null;
+
+  function showPluginModal() {
+    document.getElementById("plugin-modal").classList.remove("hidden");
+    startPollingPlugin();
+  }
+
+  function dismissPluginModal() {
+    document.getElementById("plugin-modal").classList.add("hidden");
+    clearInterval(pluginPollInterval);
+    pluginPollInterval = null;
+    updatePluginPill(true);
+  }
+
+  function updatePluginPill(connected) {
+    const pill = document.getElementById("plugin-pill");
+    const pillDot = document.getElementById("pill-dot");
+    if (connected) {
+      pill.style.borderColor = "var(--green)";
+      pill.style.color = "var(--green)";
+      pillDot.style.background = "var(--green)";
+      pill.querySelector("span").textContent = "plugin: connected";
+    }
+  }
+
+  async function startPollingPlugin() {
+    pluginPollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(BACKEND_URL + "/plugin-status", {
+          headers: { "Authorization": "Bearer " + userToken }
+        });
+        const data = await res.json();
+        if (data.connected) {
+          // Flash green then dismiss
+          const icon = document.getElementById("modal-icon");
+          const statusEl = document.getElementById("modal-status");
+          const statusText = document.getElementById("modal-status-text");
+          icon.classList.add("connected");
+          statusEl.className = "modal-status connected-status";
+          statusText.textContent = "Plugin connected!";
+          statusEl.querySelector(".dot").classList.remove("pulse");
+          pluginConnected = true;
+          clearInterval(pluginPollInterval);
+          setTimeout(dismissPluginModal, 1200);
+        }
+      } catch(e) {
+        // backend not reachable yet, keep polling
+      }
+    }, 2000);
+  }
 
   let isSignup = false;
   let userToken = null;
@@ -535,6 +740,7 @@
     document.getElementById("auth-section").classList.remove("show");
     document.getElementById("app-section").classList.add("show");
     document.getElementById("user-email").textContent = userEmail;
+    if (!pluginConnected) showPluginModal();
   }
 
   function logout() {
@@ -542,6 +748,8 @@
     localStorage.removeItem("gwasda_email");
     userToken = null;
     userEmail = null;
+    pluginConnected = false;
+    clearInterval(pluginPollInterval);
     document.getElementById("app-section").classList.remove("show");
     document.getElementById("auth-section").classList.add("show");
   }
