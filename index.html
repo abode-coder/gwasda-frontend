@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>gwasda.gg — AI Roblox Builder</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060608;
+      --surface: #0e0e12;
+      --surface2: #13131a;
+      --border: #1e1e28;
+      --green: #00ff88;
+      --green-glow: rgba(0,255,136,0.15);
+      --green-dim: rgba(0,255,136,0.06);
+      --red: #ff4466;
+      --text: #eeeef2;
+      --muted: #4a4a5a;
+      --muted2: #2a2a38;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* Scanlines */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* Corner grid lines */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,255,136,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Vignette */
+    .vignette {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.7) 100%);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    /* Green glow blob */
+    .glow-blob {
+      position: fixed;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(0,255,136,0.04) 0%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 0;
+      animation: breathe 6s ease-in-out infinite;
+    }
+
+    @keyframes breathe {
+      0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+      50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+    }
+
+    .container {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 480px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* HEADER */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 4.5rem;
+      line-height: 1;
+      letter-spacing: 2px;
+      color: var(--green);
+      text-shadow:
+        0 0 20px rgba(0,255,136,0.5),
+        0 0 60px rgba(0,255,136,0.2);
+      margin-bottom: 8px;
+    }
+
+    .logo span {
+      color: var(--text);
+      opacity: 0.3;
+    }
+
+    .tagline {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+    }
+
+    /* CARD */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 28px;
+      margin-bottom: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Top-left corner accent */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 40px; height: 2px;
+      background: var(--green);
+    }
+
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 2px; height: 40px;
+      background: var(--green);
+    }
+
+    .card-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    /* INPUTS */
+    input[type="email"],
+    input[type="password"],
+    textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.8rem;
+      padding: 13px 15px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: var(--muted);
+    }
+
+    input:focus, textarea:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px var(--green-dim);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 110px;
+      line-height: 1.6;
+    }
+
+    /* BUTTONS */
+    .btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--green);
+      color: #000;
+      border: none;
+      border-radius: 2px;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: opacity 0.15s, box-shadow 0.15s, transform 0.1s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%);
+    }
+
+    .btn:hover {
+      box-shadow: 0 0 20px rgba(0,255,136,0.35);
+      opacity: 0.92;
+    }
+
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--muted2);
+      margin-top: 8px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--green);
+      color: var(--green);
+      box-shadow: none;
+      opacity: 1;
+    }
+
+    /* STATUS */
+    .status-box {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 2px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.72rem;
+      margin-top: 12px;
+      border: 1px solid transparent;
+    }
+
+    .status-box.show { display: flex; }
+
+    .status-box.success {
+      background: rgba(0,255,136,0.05);
+      border-color: rgba(0,255,136,0.25);
+      color: var(--green);
+    }
+
+    .status-box.error {
+      background: rgba(255,68,102,0.05);
+      border-color: rgba(255,68,102,0.25);
+      color: var(--red);
+    }
+
+    .status-box.pending {
+      background: rgba(255,255,255,0.02);
+      border-color: var(--border);
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .dot.pulse { animation: pulse 1.2s ease-in-out infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.2; transform: scale(0.8); }
+    }
+
+    /* USER BAR */
+    .user-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 18px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .user-info {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+    }
+
+    .user-info strong {
+      color: var(--green);
+      font-weight: 400;
+    }
+
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--muted2);
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      padding: 5px 10px;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+      text-transform: uppercase;
+    }
+
+    .logout-btn:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* SWITCH LINK */
+    .switch-link {
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .switch-link em {
+      color: var(--green);
+      font-style: normal;
+      text-decoration: underline;
+    }
+
+    /* FOOTER NOTE */
+    .footer-note {
+      text-align: center;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--muted);
+      letter-spacing: 1px;
+      line-height: 2;
+    }
+
+    .footer-note a { color: var(--green); text-decoration: none; }
+    .footer-note a:hover { text-decoration: underline; }
+
+    /* SECTION VISIBILITY */
+    #auth-section, #app-section { display: none; }
+    #auth-section.show, #app-section.show { display: block; }
+
+    /* Plugin status pill */
+    .plugin-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.6rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .plugin-pill .dot { width: 5px; height: 5px; background: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="vignette"></div>
+  <div class="glow-blob"></div>
+
+  <div class="container">
+    <div class="header">
+      <div class="logo">gwasda<span>.gg</span></div>
+      <div class="tagline">AI-powered Roblox Studio Builder</div>
+    </div>
+
+    <!-- AUTH SECTION -->
+    <div id="auth-section" class="show">
+      <div class="card">
+        <div class="card-label" id="auth-mode-label">Login</div>
+
+        <input type="email" id="email" placeholder="email@example.com" autocomplete="email"/>
+        <input type="password" id="password" placeholder="password" autocomplete="current-password"/>
+
+        <button class="btn" id="auth-btn" onclick="handleAuth()">LOGIN</button>
+        <button class="btn btn-ghost" id="toggle-mode-btn" onclick="toggleMode()">Create account instead</button>
+
+        <div class="status-box" id="auth-status">
+          <div class="dot" id="auth-dot"></div>
+          <span id="auth-status-text"></span>
+        </div>
+      </div>
+
+      <div class="switch-link" onclick="toggleMode()">
+        <span id="switch-text">No account? <em>Sign up free</em></span>
+      </div>
+    </div>
+
+    <!-- APP SECTION -->
+    <div id="app-section">
+      <div class="card">
+        <div class="user-bar">
+          <div class="user-info">logged in as <strong id="user-email"></strong></div>
+          <button class="logout-btn" onclick="logout()">logout</button>
+        </div>
+
+        <div class="plugin-pill">
+          <div class="dot"></div>
+          plugin: waiting for studio
+        </div>
+
+        <div class="card-label">What should I build?</div>
+        <textarea id="prompt" placeholder="e.g. a medieval castle with a working drawbridge and torch lighting..."></textarea>
+        <button class="btn" id="build-btn" onclick="sendBuild()">Build in Studio</button>
+
+        <div class="status-box" id="build-status">
+          <div class="dot" id="build-dot"></div>
+          <span id="build-status-text"></span>
+        </div>
+      </div>
+
+      <div class="footer-note">
+        Make sure the <a href="#">gwasda.gg plugin</a> is installed &amp; active in Roblox Studio
+      </div>
+    </div>
+  </div>
+
+<script>
+  const SUPABASE_URL = "https://bquoisyepbietonulgtk.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxdW9pc3llcGJpZXRvbnVsZ3RrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzk0MjYsImV4cCI6MjA5MzkxNTQyNn0.K4ygrfNtEOZzQa9JAtRRxFu_JX-vi1r1_4lUKdrPo1I";
+  const BACKEND_URL = "https://gwasda-backend-production.up.railway.app";
+
+  let isSignup = false;
+  let userToken = null;
+  let userEmail = null;
+
+  window.onload = () => {
+    const saved = localStorage.getItem("gwasda_token");
+    const savedEmail = localStorage.getItem("gwasda_email");
+    if (saved) {
+      userToken = saved;
+      userEmail = savedEmail;
+      showApp();
+    }
+  };
+
+  function toggleMode() {
+    isSignup = !isSignup;
+    document.getElementById("auth-mode-label").textContent = isSignup ? "Create Account" : "Login";
+    document.getElementById("auth-btn").textContent = isSignup ? "SIGN UP" : "LOGIN";
+    document.getElementById("toggle-mode-btn").textContent = isSignup ? "Back to login" : "Create account instead";
+    document.getElementById("switch-text").innerHTML = isSignup
+      ? 'Already have an account? <em>Login</em>'
+      : 'No account? <em>Sign up free</em>';
+    document.getElementById("auth-status").className = "status-box";
+  }
+
+  async function handleAuth() {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+    const btn = document.getElementById("auth-btn");
+
+    if (!email || !password) return showAuthStatus("Fill in all fields", "error");
+
+    btn.disabled = true;
+    showAuthStatus("Connecting...", "pending", true);
+
+    const endpoint = isSignup
+      ? "/auth/v1/signup"
+      : "/auth/v1/token?grant_type=password";
+
+    try {
+      const res = await fetch(SUPABASE_URL + endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+
+      if (data.access_token) {
+        userToken = data.access_token;
+        userEmail = email;
+        localStorage.setItem("gwasda_token", userToken);
+        localStorage.setItem("gwasda_email", userEmail);
+        showApp();
+      } else if (isSignup && data.id) {
+        showAuthStatus("Account created! Check your email to confirm, then login.", "success");
+      } else {
+        showAuthStatus(data.error_description || data.msg || "Something went wrong", "error");
+      }
+    } catch (e) {
+      showAuthStatus("Connection error — check your internet", "error");
+    }
+
+    btn.disabled = false;
+  }
+
+  function showApp() {
+    document.getElementById("auth-section").classList.remove("show");
+    document.getElementById("app-section").classList.add("show");
+    document.getElementById("user-email").textContent = userEmail;
+  }
+
+  function logout() {
+    localStorage.removeItem("gwasda_token");
+    localStorage.removeItem("gwasda_email");
+    userToken = null;
+    userEmail = null;
+    document.getElementById("app-section").classList.remove("show");
+    document.getElementById("auth-section").classList.add("show");
+  }
+
+  async function sendBuild() {
+    const prompt = document.getElementById("prompt").value.trim();
+    const btn = document.getElementById("build-btn");
+
+    if (!prompt) return showBuildStatus("Enter a prompt first!", "error");
+
+    btn.disabled = true;
+    showBuildStatus("Sending to AI...", "pending", true);
+
+    try {
+      const res = await fetch(BACKEND_URL + "/build", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + userToken
+        },
+        body: JSON.stringify({ prompt })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        showBuildStatus("Sent! Check Roblox Studio ✓", "success", false);
+      } else {
+        showBuildStatus(data.error || "Something went wrong", "error");
+      }
+    } catch (e) {
+      showBuildStatus("Connection error — is the plugin running?", "error");
+    }
+
+    btn.disabled = false;
+  }
+
+  function showAuthStatus(msg, type, pulse = false) {
+    const box = document.getElementById("auth-status");
+    const text = document.getElementById("auth-status-text");
+    const dot = document.getElementById("auth-dot");
+    box.className = "status-box show " + type;
+    text.textContent = msg;
+    dot.className = "dot" + (pulse ? " pulse" : "");
+  }
+
+  function showBuildStatus(msg, type, pulse = false) {
+    const box = document.getElementById("build-status");
+    const text = document.getElementById("build-status-text");
+    const dot = document.getElementById("build-dot");
+    box.className = "status-box show " + type;
+    text.textContent = msg;
+    dot.className = "dot" + (pulse ? " pulse" : "");
+  }
+</script>
+</body>
+</html>
