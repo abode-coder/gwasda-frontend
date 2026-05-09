@@ -568,20 +568,38 @@
 
         <div class="plugin-pill" id="plugin-pill">
           <div class="dot" id="pill-dot"></div>
-          <span>plugin: waiting for studio</span>
+          <span id="pill-text">plugin: not connected</span>
         </div>
 
-        <div class="card-label">What should I build?</div>
-        <textarea id="prompt" placeholder="e.g. a medieval castle with a working drawbridge and torch lighting..."></textarea>
-        <button class="btn" id="build-btn" onclick="sendBuild()">Build in Studio</button>
+        <!-- CONNECT STEP -->
+        <div id="connect-step">
+          <div class="card-label">Step 1 — Connect Studio</div>
+          <button class="btn" id="connect-btn" onclick="generateCode()">CONNECT STUDIO</button>
 
-        <div class="status-box" id="build-status">
-          <div class="dot" id="build-dot"></div>
-          <span id="build-status-text"></span>
+          <div id="code-box" style="display:none; margin-top:16px; text-align:center;">
+            <div style="font-family:'Space Mono',monospace; font-size:0.65rem; color:var(--muted); letter-spacing:3px; margin-bottom:10px;">ENTER THIS CODE IN THE PLUGIN</div>
+            <div id="session-code" style="font-family:'Bebas Neue',sans-serif; font-size:3.5rem; letter-spacing:10px; color:var(--green); text-shadow:0 0 20px rgba(0,255,136,0.4);"></div>
+            <div style="font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--muted); margin-top:8px; display:flex; align-items:center; justify-content:center; gap:6px;">
+              <div class="dot pulse" style="background:var(--muted);"></div>
+              <span id="waiting-text">Waiting for plugin to connect...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- BUILD STEP (hidden until connected) -->
+        <div id="build-step" style="display:none;">
+          <div class="card-label">What should I build?</div>
+          <textarea id="prompt" placeholder="e.g. a medieval castle with a working drawbridge and torch lighting..."></textarea>
+          <button class="btn" id="build-btn" onclick="sendBuild()">BUILD IN STUDIO</button>
+
+          <div class="status-box" id="build-status">
+            <div class="dot" id="build-dot"></div>
+            <span id="build-status-text"></span>
+          </div>
         </div>
       </div>
 
-      <div class="footer-note" style="font-family:'Bebas Neue',sans-serif; font-size:1.3rem; letter-spacing:2px; color:var(--green); opacity:0.7; margin-top:4px;">
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:1.3rem; letter-spacing:2px; color:var(--green); opacity:0.7; margin-top:4px; text-align:center;">
         MAKE SURE TO INSTALL THE GWASDA PLUGIN
       </div>
     </div>
@@ -591,6 +609,60 @@
   const SUPABASE_URL = "https://bquoisyepbietonulgtk.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxdW9pc3llcGJpZXRvbnVsZ3RrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMzk0MjYsImV4cCI6MjA5MzkxNTQyNn0.K4ygrfNtEOZzQa9JAtRRxFu_JX-vi1r1_4lUKdrPo1I";
   const BACKEND_URL = "https://gwasda-backend-production.up.railway.app";
+
+  let sessionPollInterval = null;
+
+  async function generateCode() {
+    const btn = document.getElementById("connect-btn");
+    btn.disabled = true;
+    btn.textContent = "GENERATING...";
+
+    try {
+      const res = await fetch(BACKEND_URL + "/session/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + userToken
+        }
+      });
+      const data = await res.json();
+      if (data.code) {
+        document.getElementById("session-code").textContent = data.code;
+        document.getElementById("code-box").style.display = "block";
+        btn.style.display = "none";
+        startPollingForPlugin();
+      } else {
+        btn.disabled = false;
+        btn.textContent = "CONNECT STUDIO";
+      }
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = "CONNECT STUDIO";
+    }
+  }
+
+  function startPollingForPlugin() {
+    sessionPollInterval = setInterval(async () => {
+      try {
+        const res = await fetch(BACKEND_URL + "/session/status", {
+          headers: { "Authorization": "Bearer " + userToken }
+        });
+        const data = await res.json();
+        if (data.connected) {
+          clearInterval(sessionPollInterval);
+          document.getElementById("connect-step").style.display = "none";
+          document.getElementById("build-step").style.display = "block";
+          const pill = document.getElementById("plugin-pill");
+          const pillDot = document.getElementById("pill-dot");
+          const pillText = document.getElementById("pill-text");
+          pill.style.borderColor = "var(--green)";
+          pill.style.color = "var(--green)";
+          pillDot.style.background = "var(--green)";
+          pillText.textContent = "plugin: connected ✓";
+        }
+      } catch(e) {}
+    }, 2500);
+  }
 
   let isSignup = false;
   let userToken = null;
@@ -683,7 +755,7 @@
     if (!prompt) return showBuildStatus("Enter a prompt first!", "error");
 
     btn.disabled = true;
-    showBuildStatus("Sending to AI...", "pending", true);
+    showBuildStatus("Sending to Gemini AI...", "pending", true);
 
     try {
       const res = await fetch(BACKEND_URL + "/build", {
@@ -698,7 +770,8 @@
       const data = await res.json();
 
       if (data.success) {
-        showBuildStatus("Sent! Check Roblox Studio ✓", "success", false);
+        showBuildStatus("Building in Studio now... check Roblox! ✓", "success", false);
+        document.getElementById("prompt").value = "";
       } else {
         showBuildStatus(data.error || "Something went wrong", "error");
       }
